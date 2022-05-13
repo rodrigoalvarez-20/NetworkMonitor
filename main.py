@@ -37,6 +37,7 @@ def get_packets_graph():
         return make_response({"error": "Aun no se tiene informacion de la interfaz"}, 200)
 
     full_packets = []
+    down_intervals = []
     # Leer el archivo de datos
     with open("monitor.log", "r") as m:
         full_packets = [int(x) if x != "None\n" else None for x in m.readlines()]
@@ -48,16 +49,27 @@ def get_packets_graph():
         time_interval.append(count)
         count += 5
 
+    for i in range(1, len(full_packets) -1, 1):
+        if(full_packets[i] == None and type(full_packets[i-1]) == int):
+            down_intervals.append({ "value": (time_interval[i], 0) })
+            down_intervals.append({ "value": (time_interval[i], -2), "label": "Down" })
+        if(type(full_packets[i]) == int and full_packets[i-1] == None):
+            down_intervals.append({ "value": (time_interval[i], -2) })
+            down_intervals.append({ "value": (time_interval[i], 0) })
+            down_intervals.append({ "value": None })
+        
+            
     # Rellenar la grafica
 
-    line_chart = pygal.Line(fill=True, show_x_guides = False, show_y_guides = True)
-    line_chart.title = "Total de paquetes recibidos en la interfaz FastEthernet2/0"
-    line_chart.x_labels = time_interval
-    line_chart.add("Fa2/0", full_packets)
+    chart = pygal.XY(show_x_guides = False, show_y_guides = True, range=(-5, 8), print_labels=True, stroke=True)
+    chart.title = "Total de paquetes recibidos en la interfaz FastEthernet2/0"
+    chart.x_labels = time_interval
+    chart.add("Fa2/0", [(x,y) for x,y in zip(time_interval, full_packets)], allow_interruptions=True)
+    chart.add("Down Fa2/0", down_intervals, allow_interruptions=True, fill=True)
 
     # Guardar la grafica
 
-    line_chart.render_to_file("images/graph.svg")
+    chart.render_to_file("images/graph.svg")
 
     # Regresar el archivo de imagen
 
